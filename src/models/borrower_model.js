@@ -6,6 +6,6 @@ const borrowerSchema = new mongoose.Schema({
     address: String,
 });
 
-const Borrower = mongoose.model('Borrower', borrowerSchema); // Koleksi: "borrowers"
+const Borrower = mongoose.model('Borrower', borrowerSchema); 
 
 module.exports = Borrower;

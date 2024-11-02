@@ -1,4 +1,6 @@
 const Author = require('../models/author_model');
+const path = require('path');
+const fs = require('fs');
 
 const authorController = {};
 
@@ -50,7 +52,47 @@ authorController.deleteAuthor = async (req, res) => {
     try {
         const deletedAuthor = await Author.findByIdAndDelete(req.params.id);
         if (!deletedAuthor) return res.status(404).json({ message: "Author not found" });
+
+        // Menghapus file gambar jika ada
+        if (deletedAuthor.imagePath) {
+            fs.unlink(deletedAuthor.imagePath, (err) => {
+                if (err) console.error("Failed to delete image:", err);
+            });
+        }
+
         res.status(200).json({ message: "Author deleted" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Mengupload gambar untuk penulis
+authorController.uploadAuthorImage = async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded." });
+    }
+
+    try {
+        // Simpan gambar ke database (saya asumsikan ID penulis sudah ada di req.body.authorId)
+        const { authorId } = req.body; // Ambil ID penulis dari body
+        const author = await Author.findById(authorId);
+        if (!author) return res.status(404).json({ message: "Author not found" });
+
+        // Hapus gambar lama jika ada
+        if (author.imagePath) {
+            fs.unlink(author.imagePath, (err) => {
+                if (err) console.error("Failed to delete old image:", err);
+            });
+        }
+
+        // Simpan path gambar baru
+        author.imagePath = req.file.path; // Simpan path gambar baru
+        const updatedAuthor = await author.save();
+
+        res.status(200).json({
+            message: "Image uploaded and author updated successfully",
+            data: updatedAuthor
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

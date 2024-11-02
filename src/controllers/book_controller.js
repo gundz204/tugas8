@@ -17,7 +17,17 @@ bookController.getBookById = async (req, res) => {
     try {
         const book = await Book.findById(req.params.id).populate('author').populate('category');
         if (!book) return res.status(404).json({ message: "Book not found" });
-        res.status(200).json({ data: book });
+
+        res.status(200).json({
+            data: {
+                _id: book._id,
+                title: book.title,
+                author: book.author,
+                category: book.category,
+                stock: book.stock,
+                coverImagePath: book.coverImagePath // Menyertakan path cover
+            }
+        });
     } catch (error) {
         res.status(500).json({ message: "Failed to retrieve the book", error: error.message });
     }
@@ -64,14 +74,37 @@ bookController.deleteBook = async (req, res) => {
 };
 
 // Mengupload cover buku
-bookController.uploadCover = (req, res) => {
+bookController.uploadCover = async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: "No file uploaded." });
     }
-    res.status(200).json({
-        message: "File uploaded successfully",
-        filePath: req.file.path // Menyediakan path file yang bisa diakses
-    });
+
+    const { bookId } = req.body; // Mengambil bookId dari body
+    try {
+        const book = await Book.findById(bookId).populate('author').populate('category'); // Mencari buku berdasarkan ID
+
+        if (!book) {
+            return res.status(404).json({ message: "Book not found." });
+        }
+
+        // Simpan path coverImage
+        book.coverImagePath = req.file.path;
+        await book.save(); // Simpan buku dengan path cover baru
+
+        res.status(200).json({
+            message: "Cover uploaded successfully",
+            data: {
+                _id: book._id,
+                title: book.title,
+                author: book.author,
+                category: book.category,
+                stock: book.stock,
+                coverImagePath: book.coverImagePath // Kembalikan data buku yang sudah diupdate
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 };
 
 module.exports = bookController;
