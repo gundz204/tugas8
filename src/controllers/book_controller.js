@@ -2,20 +2,20 @@ const Book = require('../models/book_model');
 
 const bookController = {};
 
-// Mendapatkan semua buku
+// Mendapatkan semua buku dengan data Author dan Category terpopulasi
 bookController.getAllBooks = async (req, res) => {
     try {
-        const books = await Book.find();
+        const books = await Book.find().populate('author').populate('category');
         res.status(200).json({ data: books });
     } catch (error) {
         res.status(500).json({ message: "Failed to retrieve books", error: error.message });
     }
 };
 
-// Mendapatkan buku berdasarkan ID
+// Mendapatkan buku berdasarkan ID dengan data Author dan Category terpopulasi
 bookController.getBookById = async (req, res) => {
     try {
-        const book = await Book.findById(req.params.id);
+        const book = await Book.findById(req.params.id).populate('author').populate('category');
         if (!book) return res.status(404).json({ message: "Book not found" });
         res.status(200).json({ data: book });
     } catch (error) {
@@ -44,7 +44,7 @@ bookController.createBook = async (req, res) => {
 // Mengupdate buku
 bookController.updateBook = async (req, res) => {
     try {
-        const updatedBook = await Book.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        const updatedBook = await Book.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('author').populate('category');
         if (!updatedBook) return res.status(404).json({ message: "Book not found" });
         res.status(200).json({ message: "Book updated successfully", data: updatedBook });
     } catch (error) {
@@ -63,6 +63,7 @@ bookController.deleteBook = async (req, res) => {
     }
 };
 
+// Mengupload cover buku
 bookController.uploadCover = (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: "No file uploaded." });
