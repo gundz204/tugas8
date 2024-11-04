@@ -20,6 +20,11 @@ borrowController.borrowBook = async (req, res) => {
             return res.status(404).json({ message: "Book or Borrower not found." });
         }
 
+        // Cek apakah stok tersedia
+        if (book.stock <= 0) {
+            return res.status(400).json({ message: "Book is out of stock." });
+        }
+
         // Membuat record peminjaman baru
         const borrow = new Borrow({
             book: bookId,
@@ -28,6 +33,10 @@ borrowController.borrowBook = async (req, res) => {
             isReturned: false
         });
         await borrow.save();
+
+        // Mengurangi stok buku
+        book.stock -= 1;
+        await book.save();
 
         // Menghitung deadline pengembalian
         const returnDeadline = new Date(borrow.borrowDate.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 hari dari tanggal peminjaman
@@ -119,6 +128,10 @@ borrowController.returnBook = async (req, res) => {
         if (borrowDuration > maxBorrowDuration) {
             penalty = (borrowDuration - maxBorrowDuration) * lateFeePerDay; // Hitung denda
         }
+
+        // Menambah stok buku kembali
+        borrow.book.stock += 1;
+        await borrow.book.save();
 
         await borrow.save();
 
