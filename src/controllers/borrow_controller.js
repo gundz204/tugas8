@@ -13,14 +13,14 @@ borrowController.borrowBook = async (req, res) => {
     }
 
     try {
-        const book = await Book.findById(bookId);
+        const book = await Book.findById(bookId).populate('author').populate('category');
         const borrower = await Borrower.findById(borrowerId);
 
         if (!book || !borrower) {
             return res.status(404).json({ message: "Book or Borrower not found." });
         }
 
-        // Create a new borrow record
+        // Membuat record peminjaman baru
         const borrow = new Borrow({
             book: bookId,
             borrower: borrowerId,
@@ -29,7 +29,36 @@ borrowController.borrowBook = async (req, res) => {
         });
         await borrow.save();
 
-        res.status(201).json({ message: "Book borrowed successfully", data: borrow });
+        // Menghitung deadline pengembalian
+        const returnDeadline = new Date(borrow.borrowDate.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 hari dari tanggal peminjaman
+
+        // Response dengan info lengkap
+        res.status(201).json({
+            message: "Book borrowed successfully",
+            data: {
+                borrowId: borrow._id,
+                book: {
+                    title: book.title,
+                    author: {
+                        name: book.author.name,
+                        bio: book.author.bio
+                    },
+                    category: {
+                        name: book.category.name,
+                        description: book.category.description
+                    },
+                    stock: book.stock,
+                    coverImagePath: book.coverImagePath
+                },
+                borrower: {
+                    name: borrower.name,
+                    contact: borrower.contact,
+                    address: borrower.address
+                },
+                borrowDate: borrow.borrowDate.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+                returnDeadline: returnDeadline.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })
+            }
+        });
     } catch (error) {
         res.status(500).json({ message: "Failed to borrow the book", error: error.message });
     }
@@ -39,16 +68,19 @@ borrowController.borrowBook = async (req, res) => {
 borrowController.getActiveBorrows = async (req, res) => {
     try {
         const activeBorrows = await Borrow.find({ isReturned: false })
-            .populate('book')
+            .populate({
+                path: 'book',
+                populate: { path: 'author category' } // Populate penulis dan kategori
+            })
             .populate('borrower');
 
-        // Menambahkan deadline pengembalian
+        // Menambahkan deadline pengembalian ke setiap borrow
         const borrowsWithDeadline = activeBorrows.map(borrow => {
             const returnDeadline = new Date(borrow.borrowDate.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 hari
             return {
                 ...borrow._doc, // Mengambil semua properti dari borrow
-                returnDeadline: returnDeadline.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }), // Menampilkan dalam format Indonesia
-                borrowDate: borrow.borrowDate.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) // Format tanggal peminjaman
+                returnDeadline: returnDeadline.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+                borrowDate: borrow.borrowDate.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })
             };
         });
 
@@ -93,8 +125,8 @@ borrowController.returnBook = async (req, res) => {
         res.status(200).json({
             message: "Book returned successfully",
             penalty: penalty,
-            returnDate: returnDate.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }), // Tanggal pengembalian
-            returnDeadline: returnDeadline.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) // Deadline pengembalian
+            returnDate: returnDate.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+            returnDeadline: returnDeadline.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })
         });
     } catch (error) {
         res.status(500).json({ message: "Failed to return the book", error: error.message });
