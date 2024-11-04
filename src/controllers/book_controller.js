@@ -1,4 +1,5 @@
 const Book = require('../models/book_model');
+const mongoose = require('mongoose');
 
 const bookController = {};
 
@@ -190,5 +191,67 @@ bookController.uploadCover = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// Mendapatkan stok buku berdasarkan ID
+bookController.getBookStockById = async (req, res) => {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: "Invalid book ID format" });
+    }
+
+    try {
+        const book = await Book.findById(id, 'title stock');
+        if (!book) return res.status(404).json({ message: "Book not found" });
+
+        res.status(200).json({ data: book });
+    } catch (error) {
+        res.status(500).json({ message: "Failed to retrieve book stock", error: error.message });
+    }
+};
+
+// Mengupdate stok buku berdasarkan ID
+bookController.updateBookStockById = async (req, res) => {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: "Invalid book ID format" });
+    }
+
+    const { stock } = req.body;
+    if (stock === undefined) {
+        return res.status(400).json({ message: "Stock is required" });
+    }
+
+    try {
+        const updatedBook = await Book.findByIdAndUpdate(
+            id,
+            { stock },
+            { new: true, fields: 'title stock' }
+        );
+
+        if (!updatedBook) return res.status(404).json({ message: "Book not found" });
+
+        res.status(200).json({
+            message: "Book stock updated successfully",
+            data: updatedBook
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Failed to update book stock", error: error.message });
+    }
+};
+
+bookController.getStock = async (req, res) => {
+    try {
+        const books = await Book.find();
+        const formattedBooks = books.map(book => ({
+            _id: book._id,
+            title: book.title,
+            stock: book.stock,
+        }));
+        res.status(200).json({ data: formattedBooks });
+    } catch (error) {
+        res.status(500).json({ message: "Failed to retrieve books", error: error.message });
+    }
+};
+
 
 module.exports = bookController;

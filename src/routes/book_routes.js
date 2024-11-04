@@ -22,4 +22,10 @@ bookRoutes.delete("/book/:id", bookController.deleteBook);
 // Rute untuk mengupload cover buku
 bookRoutes.post("/book/upload", upload.single('cover'), bookController.uploadCover);
 
+
+bookRoutes.get('/stock/books', bookController.getStock);
+bookRoutes.get('/stock/book/:id', bookController.getBookStockById);
+bookRoutes.put('/stock/book/:id', bookController.updateBookStockById);
+
+
 module.exports = bookRoutes;
